@@ -291,7 +291,7 @@ res %>%
                       values = c('blue', 'red'),
                       labels = c('Pr(occ) = 0.2','Pr(occ) = 0.5')) +
   facet_wrap(~ nsites + nsurveys, labeller = label_wrap_gen(multi_line = FALSE)) + 
-  theme_bw(base_size = 16)
+  theme_bw(base_size = 14)
 ```
 
 ![](biasoccupancy.png)<!-- -->
