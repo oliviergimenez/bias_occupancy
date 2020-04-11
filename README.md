@@ -289,7 +289,7 @@ res %>%
        y = '% bias in occupancy estimate') + 
     scale_fill_manual(name = NULL,
                       values = c('blue', 'red'),
-                      labels = c('Pr occupancy is 0.2','Pr occupancy is 0.5')) +
+                      labels = c('Pr(occ) = 0.2','Pr(occ) = 0.5')) +
   facet_wrap(~ nsites + nsurveys, labeller = label_wrap_gen(multi_line = FALSE)) + 
   theme_bw(base_size = 16)
 ```
