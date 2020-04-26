@@ -2,12 +2,21 @@
 
 Here we provide some R code to calculate bias in occupancy estimate as a function of the detection probability given various levels of occupancy probability, various number of sites and surveys.
 
-Load package `unmarked` to carry out occupancy analyses
+Load package `unmarked` to carry out occupancy analyses:
+
 ```r
 library(unmarked)
 ```
 
-Define function to carry out simulations
+Load suite of packages `tidyverse` for data manipulation and visualisation:
+
+```r
+library(tidyverse)
+```
+
+
+Define function to carry out simulations:
+
 ```r
 occu_par <- function(
   nb_sites = 50, # number of sites
@@ -45,255 +54,109 @@ for (j in 1:n_sim){
   
 }
 
-# return bias
+# return relative bias in %
 bias <- round(mean((res - occpr)/occpr) * 100,1)
-print(bias)
+return(bias)
 }
 ```
 
-Grid on detection
+Grid on detection, occupancy, number of surveys and number of sites:
+
 ```r
-det <- seq(0.1, 0.9, by = 0.1)
+det <- seq(0.05, 0.95, by = 0.1)
+occ <- seq(0.05, 0.95, by = 0.1)
+nsites <- c(20, 50, 100)
+nsurveys <- c(5, 10, 20)
 ```
 
-Consider several scenarios, and carry out simulations (this is ugly):
+Define number of simulations per scenario and set the seed for reproducibility:
+
 ```r
-# nsites = 50, nsurveys = 5, occ = 0.2
-sim1 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim1[index] <- occu_par(nb_sites = 50, 
-         nb_surveys = 5, 
-         occpr = 0.2, 
-         detpr = s,
-         n_sim = 100)
-  index <- index + 1
+nsim <- 100
+set.seed(666)
+```
+
+Initialize a table for storing results:
+
+```r
+sim <- tibble(det = double(), 
+              occ = double(),
+              nsites = double(),
+              nsurveys = double(),
+              bias = double())
+```
+
+Loop within loop within loop...
+
+```r
+for (i in det){
+  for (j in occ){
+    for (k in nsites){
+      for (l in nsurveys){
+        res <- occu_par(nb_sites = k, 
+                        nb_surveys = l, 
+                        occpr = j, 
+                        detpr = i,
+                        n_sim = nsim)
+        sim <- sim %>% add_row(det = i,
+                               occ = j,
+                               nsites = k,
+                               nsurveys = l,
+                               bias = res)
+      }
+    }
+  }
 }
+sim
 ```
 
 ```
-## [1] 175.6
-## [1] 29.6
-## [1] 5.2
-## [1] 5.2
-## [1] -0.1
-## [1] -0.9
-## [1] -2.2
-## [1] 2.6
-## [1] -0.3
+## # A tibble: 900 x 5
+##      det   occ nsites nsurveys  bias
+##    <dbl> <dbl>  <dbl>    <dbl> <dbl>
+##  1  0.05  0.05     20        5  298 
+##  2  0.05  0.05     20       10  425.
+##  3  0.05  0.05     20       20  581.
+##  4  0.05  0.05     50        5  640.
+##  5  0.05  0.05     50       10  847.
+##  6  0.05  0.05     50       20  739.
+##  7  0.05  0.05    100        5  914.
+##  8  0.05  0.05    100       10  882.
+##  9  0.05  0.05    100       20  692.
+## 10  0.05  0.15     20        5  213.
+## # … with 890 more rows
 ```
 
-```r
-# nsites = 50, nsurveys = 5, occ = 0.5
-det <- seq(0.1, 0.9, by = 0.1)
-sim2 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim2[index] <- occu_par(nb_sites = 50, 
-                          nb_surveys = 5, 
-                          occpr = 0.5, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 22
-## [1] 7.5
-## [1] 2.2
-## [1] 0.6
-## [1] 1.9
-## [1] -1
-## [1] 1.1
-## [1] 0.8
-## [1] -0.3
-```
+Visualize bias:
 
 ```r
-# nsites = 100, nsurveys = 5, occ = 0.2
-det <- seq(0.1, 0.9, by = 0.1)
-sim3 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim3[index] <- occu_par(nb_sites = 100, 
-                          nb_surveys = 5, 
-                          occpr = 0.2, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 79
-## [1] 15.9
-## [1] 5.9
-## [1] 0.2
-## [1] 2.9
-## [1] 1.2
-## [1] -0.3
-## [1] -0.3
-## [1] 0.6
-```
-
-```r
-# nsites = 100, nsurveys = 5, occ = 0.5
-det <- seq(0.1, 0.9, by = 0.1)
-sim4 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim4[index] <- occu_par(nb_sites = 100, 
-                          nb_surveys = 5, 
-                          occpr = 0.5, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 9.6
-## [1] 3.6
-## [1] 1.5
-## [1] -1.8
-## [1] 0.8
-## [1] -0.6
-## [1] 0.3
-## [1] -0.6
-## [1] 0
-```
-
-```r
-# nsites = 100, nsurveys = 10, occ = 0.2
-det <- seq(0.1, 0.9, by = 0.1)
-sim5 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim5[index] <- occu_par(nb_sites = 100, 
-                          nb_surveys = 10, 
-                          occpr = 0.2, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 6.3
-## [1] 2.1
-## [1] 1.2
-## [1] 1.2
-## [1] -0.1
-## [1] -2
-## [1] -0.7
-## [1] 3.2
-## [1] -0.2
-```
-
-```r
-# nsites = 100, nsurveys = 10, occ = 0.5
-det <- seq(0.1, 0.9, by = 0.1)
-sim6 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim6[index] <- occu_par(nb_sites = 100, 
-                          nb_surveys = 10, 
-                          occpr = 0.5, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 4.2
-## [1] -0.3
-## [1] 0.9
-## [1] -1.1
-## [1] -0.4
-## [1] 0.8
-## [1] 0.2
-## [1] 0.7
-## [1] -2
-```
-
-```r
-# nsites = 50, nsurveys = 10, occ = 0.2
-det <- seq(0.1, 0.9, by = 0.1)
-sim7 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim7[index] <- occu_par(nb_sites = 50, 
-                          nb_surveys = 10, 
-                          occpr = 0.2, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 39.3
-## [1] 5.6
-## [1] 6.3
-## [1] -0.6
-## [1] 1.5
-## [1] 4.6
-## [1] -3.1
-## [1] -0.4
-## [1] -2
-```
-
-```r
-# nsites = 50, nsurveys = 10, occ = 0.5
-det <- seq(0.1, 0.9, by = 0.1)
-sim8 <- rep(NA, length(det))
-index <- 1
-for (s in det){
-  sim8[index] <- occu_par(nb_sites = 50, 
-                          nb_surveys = 10, 
-                          occpr = 0.5, 
-                          detpr = s,
-                          n_sim = 100)
-  index <- index + 1
-}
-```
-
-```
-## [1] 9.4
-## [1] 1.1
-## [1] -1.8
-## [1] 1.1
-## [1] 0.1
-## [1] -1
-## [1] 1.5
-## [1] -0.1
-## [1] 1.5
-```
-
-Visualize bias
-```r
-library(tidyverse)
-res <- tibble(bias = c(sim1,sim2,sim3,sim4,sim5,sim6,sim7,sim8),
-       nsites = as_factor(c(rep('50 sites', 18), rep('100 sites', 36), rep('50 sites', 18))),
-       nsurveys = as_factor(c(rep('5 surveys', 36), rep('10 surveys', 36))),
-       procc = as_factor(rep(c(rep(0.2, 9) , rep(0.5, 9)), 4)),
-       prdet = rep(as_factor(det), 8))
-
-res %>%
+sim %>%
+  mutate(nsites = as_factor(nsites),
+         nsites = recode(nsites, 
+                         '20' = '20 sites',
+                         '50' = '50 sites',
+                         '100' = '100 sites'),
+         nsurveys = as_factor(nsurveys),
+         nsurveys = recode(nsurveys,
+                           '5' = '5 surveys',
+                           '10' = '10 surveys',
+                           '20' = '20 surveys')) %>%
   ggplot() +
-  aes(x = prdet, y = bias, fill = procc) + 
-  geom_col(position = "dodge", width=.6) + 
+  aes(x = det,
+      y = occ, 
+      fill = bias) +
+  geom_tile() +
+  scale_fill_distiller(palette = "YlGnBu", 
+                       direction = 1,
+                       name = 'relative bias (%)') +
+  facet_wrap(~ nsites + nsurveys, 
+             labeller = label_wrap_gen(multi_line = FALSE), 
+             ncol = 3) + 
   labs(x = 'detection probability',
-       y = '% bias in occupancy estimate') + 
-    scale_fill_manual(name = NULL,
-                      values = c('blue', 'red'),
-                      labels = c('Pr(occ) = 0.2','Pr(occ) = 0.5')) +
-  facet_wrap(~ nsites + nsurveys, labeller = label_wrap_gen(multi_line = FALSE)) + 
-  theme_bw(base_size = 14)
+       y = 'occupancy probability',
+       title = 'What is the amount of occupancy bias in single-season occupancy model ? ',
+       subtitle = 'Simulations based on 100 samples per scenario, model fitting accomplished with unmarked') + 
+  theme_bw(base_size = 10)
 ```
 
-![](biasoccupancy.png)<!-- -->
-
-
+![](biasocc.png)<!-- -->
