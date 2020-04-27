@@ -1,6 +1,6 @@
 # Bias in occupancy estimate for a static model
 
-Here we provide some R code to calculate bias in occupancy estimate as a function of the detection probability given various levels of occupancy probability, various number of sites and surveys.
+Here we provide some R code to calculate bias in occupancy estimate as a function of the detection probability given various levels of occupancy probability, various number of sites and surveys. Check out the interactive app created using flexdashboard [here](https://ecologicalstatistics.shinyapps.io/bias_occupancy/). 
 
 Load package `unmarked` to carry out occupancy analyses:
 
