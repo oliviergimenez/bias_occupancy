@@ -1,0 +1,158 @@
+---
+title: "Bias in single-season occupancy models"
+author: "Olivier Gimenez"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+    
+```{r global, include=FALSE}
+
+# Load packages
+library(unmarked)
+library(tidyverse)
+
+# Define function to carry out simulations:
+occu_par <- function(
+  nb_sites = 50, # number of sites
+  nb_surveys = 5, # number of surveys
+  occpr = 0.3, # occupancy prob 
+  detpr = 0.5, # detection prob
+  n_sim = 500){ # number of simulations
+
+# preallocate memory for storing occupancy estimates
+res <- rep(NA, n_sim)
+
+# simulate data from a static occupancy model n_sim times
+for (j in 1:n_sim){
+  
+  # define state process
+  z <- rbinom(nb_sites, 1, occpr) # occupancy state
+  
+  # pre-allocate memory for matrix of detection/non-detections
+  y <- matrix(NA, nrow = nb_sites, ncol = nb_surveys) # detection histories
+  
+  # define observation process
+  for(i in 1:nb_sites){
+      prob <- z[i] * detpr
+      y[i,1:nb_surveys] <- rbinom(nb_surveys, 1, prob)
+  }
+  
+  # format data
+  dat <- unmarkedFrameOccu(y)
+  
+  # fit static occupancy model w/ constant parameters
+  fm <- occu(~ 1 ~ 1, dat)
+  
+  # get estimate of occupancy prob
+  res[j] <- backTransform(fm, type = 'state')@estimate
+  
+}
+
+# return relative bias in %
+bias <- round(mean((res - occpr)/occpr) * 100,1)
+return(bias)
+}
+
+# grids on detection/occupancy probabilities
+det <- seq(0.05, 0.95, by = 0.1)
+occ <- seq(0.05, 0.95, by = 0.1)
+```
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Compute the relative bias (in %) in the maximum-likelihood estimator of the occupancy probability $\psi$ in a single-season (aka static) occupancy model with constant parameters fitted with the package `unmarked`. Relative bias is $(E(\hat \psi) - \psi)/\psi$. Warning: the number of simulations is set to 10 by default, you might want to use 100 or 500 instead. 
+
+
+```{r}
+sliderInput("nsites", label = "Number of sites:",
+            min = 10, max = 100, value = 10, step = 1)
+
+sliderInput("nsurveys", label = "Number of surveys:",
+            min = 5, max = 50, value = 5, step = 1)
+
+selectInput("nsim", label = "Number of simulations:",
+            choices = c(10, 100, 500), selected = 10)
+
+selectInput("pal", label = "Color palette:",
+            choices = c("BrBG", "PiYG", "PRGn", "PuOr", "RdBu", "RdGy", "RdYlBu", "RdYlGn", "Spectral"), selected = "BrBG")
+```
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### What is the amount of bias in the probability of occupancy ?
+
+```{r}
+selectedData <- reactive({
+# Initialize a table for storing results:
+sim <- tibble(det = double(), 
+              occ = double(),
+              nsites = double(),
+              nsurveys = double(),
+              bias = double())
+
+# Compute bias:
+for (i in det){
+    for (j in occ){
+          res <- occu_par(nb_sites = as.numeric(input$nsites),
+                          nb_surveys = as.numeric(input$nsurveys),
+                          occpr = j,
+                          detpr = i,
+                          n_sim = as.numeric(input$nsim))
+          sim <- sim %>% add_row(det = i,
+                                 occ = j,
+                                 nsites = as.numeric(input$nsites),
+                                 nsurveys = as.numeric(input$nsurveys),
+                                 bias = res)
+        }
+}
+sim
+})
+```
+
+```{r}
+# Visualize bias:
+renderPlot({
+limit <- selectedData() %>% 
+  pull(bias) %>%
+  max(abs(.)) * c(-1, 1) # to set midpoint at 0
+selectedData() %>%
+  ggplot() +
+  aes(x = det,
+      y = occ, 
+      fill = bias) +
+  geom_tile() +
+  scale_fill_distiller(palette = input$pal, 
+                       type = 'div',
+                       direction = 1,
+                       name = 'relative bias (%)',
+                       limit = limit) + 
+  labs(x = 'detection probability',
+       y = 'occupancy probability') + 
+  theme_bw(base_size = 14) + 
+  theme(legend.position="right",
+        legend.title = element_blank())
+})  
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Simulation details {data-width=400}
+
+```{r}
+renderTable({
+  selectedData() %>%
+    rename('Pr(det)' = det,
+           'Pr(occ)' = occ,
+           'Nb sites' = nsites,
+           'Nb surveys' = nsurveys,
+           'Bias' = bias)
+})
+```
